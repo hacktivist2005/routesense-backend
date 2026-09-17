@@ -743,11 +743,23 @@ def calculate_performance_metrics(ping_data: Dict[str, Any], traceroute_data: Di
     }
 
 def calculate_health_metrics(ping_data: Dict[str, Any], traceroute_data: Dict[str, Any]) -> Dict[str, Any]:
-    # Connectivity Score
+    # 1. Check Ping & Reachability
+    ping_success = ping_data.get("success", False)
     loss = ping_data.get("packet_loss") or 0.0
-    connectivity = max(0, round(100 - (loss * 2))) if ping_data.get("success") else 0
+    
+    # Target unreachable guard check
+    if not ping_success or loss == 100:
+        return {
+            "overall": 0,
+            "connectivity": 0,
+            "latency": 0,
+            "route_stability": 0,
+        }
 
-    # Latency Score
+    # 2. Connectivity Score
+    connectivity = max(0, round(100 - (loss * 2)))
+
+    # 3. Latency Score
     avg_lat = ping_data.get("average_latency")
     if avg_lat is None:
         latency_score = 0
@@ -758,17 +770,18 @@ def calculate_health_metrics(ping_data: Dict[str, Any], traceroute_data: Dict[st
         elif avg_lat <= 200: latency_score = 50
         else: latency_score = 25
 
-    # Route Stability Score
+    # 4. Route Stability Score
     hops = traceroute_data.get("hops", [])
     dest_reached = traceroute_data.get("success", False)
     timeouts = [h for h in hops if h.get("status") == "timeout"]
     
-    if dest_reached:
-        stability = max(80, 100 - (len(timeouts) * 3))
+    if not dest_reached or not hops:
+        stability = 0
     else:
-        stability = max(0, 100 - (len(timeouts) * 10))
+        stability = max(50, 100 - (len(timeouts) * 5))
 
     overall = round(connectivity * 0.40 + latency_score * 0.35 + stability * 0.25)
+    
     return {
         "overall": overall,
         "connectivity": connectivity,
