@@ -37,7 +37,7 @@ from routes.comparison import comparison_bp
 app = Flask(__name__)
 
 # Enterprise CORS configuration allowing modern React frontend access
-CORS(app, resources={r"/api/*": {"origins": "*"}})
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 app.register_blueprint(analyzer_bp)
 app.register_blueprint(comparison_bp)
